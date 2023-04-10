@@ -17,7 +17,6 @@
  */
 package rummage
 
-import akka.actor.{ActorContext, Scheduler}
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{Executors, ScheduledExecutorService, ThreadFactory}
 import scala.concurrent.duration._
@@ -149,61 +148,6 @@ object Clock {
   }
 
 }
-
-/**
- *
- * A clock for use in Akka actors, using system time and Thread.sleep()` for synchronous waiting, but using an Akka
- * `Scheduler` for asynchronous waiting.
- *
- * @param akkaScheduler The Akka scheduler to use.
- */
-case class AkkaClock(akkaScheduler: Scheduler)
-  extends Clock.SystemTime with Clock.SyncWaitBySleeping with AkkaClock.AsyncWaitWithAkkaScheduler
-
-/** Support for the `AkkaClock` class. */
-object AkkaClock {
-
-  /** An implementation of the asynchronous waiting in `Clock` using an Akka `Scheduler`. */
-  trait AsyncWaitWithAkkaScheduler extends Clock {
-
-    /** The Akka scheduler to use. */
-    def akkaScheduler: Scheduler
-
-    /* Use `Scheduler.scheduleOnce()` to schedule tasks to fulfill a promise after the timeout elapses. */
-    override def asyncWait(timeout: FiniteDuration)(implicit ec: ExecutionContext) = {
-      val waitUntil = tick + timeout
-      val promise = Promise[FiniteDuration]()
-      new Runnable {
-        override def run = {
-          val remaining = waitUntil - tick
-          if (remaining <= Duration.Zero) {
-            promise.complete(Success(timeout + -remaining))
-          } else {
-            Try {akkaScheduler.scheduleOnce(remaining, this)} match {
-              case Failure(e) => promise.complete(Failure(e))
-              case _ =>
-            }
-          }
-        }
-      }.run()
-      promise.future
-    }
-
-  }
-
-}
-
-/** A trait that defines when an implicit Akka clock is available. */
-trait AkkaClocks {
-
-  /** An implicit Akka clock is available wherever an actor context is available. */
-  implicit def implicitAkkaClock(implicit ctx: ActorContext): Clock =
-    AkkaClock(ctx.system.scheduler)
-
-}
-
-/** Global access to the implicit Akka clock publisher. */
-object AkkaClocks extends AkkaClocks
 
 /**
  * A clock that scales the progression of time reported by another clock.

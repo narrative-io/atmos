@@ -17,7 +17,6 @@
  */
 package rummage
 
-import akka.actor.{ActorSystem, Cancellable, Scheduler}
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent._
@@ -49,7 +48,10 @@ trait Timer {
    * @param ec       The execution context to perform the action on.
    */
   def every[U](interval: FiniteDuration)(f: => U)(implicit ec: ExecutionContext): Task =
-    submit(interval, Some(interval), f _)
+    submit(interval, Some(interval), () => {
+      f
+      ()
+    })
 
   /**
    * Submits a task for execution after the specified delay and possibly repeatedly thereafter, waiting the specified
@@ -78,7 +80,10 @@ trait Timer {
      * @param ec The execution context to perform the action on.
      */
     def apply[U](f: => U)(implicit ec: ExecutionContext): Task =
-      submit(delay, None, f _)
+      submit(delay, None, () => {
+        f
+        ()
+      })
 
     /**
      * Performs a task once after this builder's delay and repeatedly thereafter, waiting the specified interval
@@ -90,7 +95,10 @@ trait Timer {
      * @param ec       The execution context to perform the action on.
      */
     def andEvery[U](interval: FiniteDuration)(f: => U)(implicit ec: ExecutionContext): Task =
-      submit(delay, Some(interval), f _)
+      submit(delay, Some(interval), () => {
+        f
+        ()
+      })
 
   }
 
@@ -154,7 +162,10 @@ final class JavaTimer(executor: ScheduledExecutorService) extends Timer {
     new Timer.Task {
       def isCancelled = future.isCancelled
 
-      def cancel() = future.cancel(false)
+      def cancel() = {
+        future.cancel(false)
+        ()
+      }
     }: Timer.Task
   }
 }
@@ -171,50 +182,5 @@ object JavaTimer {
    * @param executor The `ScheduledExecutorService` instance to view as a timer.
    */
   def apply(executor: ScheduledExecutorService): JavaTimer = new JavaTimer(executor)
-
-}
-
-/**
- * A timer implemented with an Akka `Scheduler`.
- *
- * @param scheduler The `Scheduler` instance to view as a timer.
- */
-@deprecated("Timers are replaced by the Clock API", "1.1")
-final class AkkaTimer(scheduler: Scheduler) extends Timer {
-  def submit(delay: FiniteDuration, interval: Option[FiniteDuration], f: () => Unit)(implicit ec: ExecutionContext) = {
-    @volatile var handle = None: Option[Cancellable]
-    val action = new Runnable {def run = if (handle forall (!_.isCancelled)) f()}
-    val cancellable = interval match {
-      case Some(interval) => scheduler.schedule(delay, interval, action)
-      case None => scheduler.scheduleOnce(delay, action)
-    }
-    handle = Some(cancellable)
-    new Timer.Task {
-      def isCancelled = cancellable.isCancelled
-
-      def cancel() = cancellable.cancel()
-    }: Timer.Task
-  }
-}
-
-/**
- * Factory for timers implemented with an Akka `Scheduler`.
- */
-@deprecated("Timers are replaced by the Clock API", "1.1")
-object AkkaTimer {
-
-  /**
-   * Creates an Akka timer from the specified scheduler.
-   *
-   * @param scheduler The `Scheduler` instance to view as a timer.
-   */
-  def apply(scheduler: Scheduler): AkkaTimer = new AkkaTimer(scheduler)
-
-  /**
-   * Creates an Akka timer from the specified actor system's scheduler.
-   *
-   * @param system The actor system that contains the scheduler to view as a timer.
-   */
-  def apply(system: ActorSystem): AkkaTimer = AkkaTimer(system.scheduler)
 
 }
