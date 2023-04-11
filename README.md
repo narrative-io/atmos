@@ -312,23 +312,26 @@ implicit val retryPolicy = retryForever monitorWith Logger.getLogger("MyLoggerNa
 // Submit information about failed attempts to the specified instance of `java.util.logging.Logger`, customizing
 // what events get logged and and at what level.
 val otherRetryPolicy = retryForever monitorWith {
-  Logger.getLogger("MyLoggerName") onRetrying logNothing onInterrupted logWarning onAborted logError
+   Logger.getLogger("MyLoggerName") onRetrying logNothing onInterrupted logWarning onAborted logError
 }
 
 // Submit information about failed attempts to the specified instance of `org.slf4j.Logger`, customizing what
 // events get logged and and at what level.
+
 import org.slf4j.LoggerFactory
 import Slf4jSupport._
+
 val slf4jRetryPolicy = retryForever monitorWith {
-  LoggerFactory.getLogger("MyLoggerName") onRetrying logNothing onInterrupted logWarning onAborted logError
+   LoggerFactory.getLogger("MyLoggerName") onRetrying logNothing onInterrupted logWarning onAborted logError
 }
 
 // Submit information about failed attempts to the specified instance of `akka.event.LoggingAdapter`, customizing
 // what events get logged and and at what level.
+
 import akka.event.Logging
-import AkkaSupport._
+
 val akkaRetryPolicy = retryForever monitorWith {
-  Logging(context.system, this) onRetrying logNothing onInterrupted logWarning onAborted logError
+   Logging(context.system, this) onRetrying logNothing onInterrupted logWarning onAborted logError
 }
 ```
 
@@ -514,13 +517,12 @@ First, you will want to make sure you have an implicit instance of `rummage.Cloc
 
 ```scala
 import scala.concurrent.duration._
-import akka.actor.{ ActorRef, ActorSystem }
+import akka.actor.{ActorRef, ActorSystem}
 import akka.event.Logging
-import akka.pattern.{ ask, pipe }
+import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import rummage.AkkaClock._
 import atmos.dsl._
-import AkkaSupport._
 
 val system: ActorSystem = ???
 val actor: ActorRef = ???
@@ -531,7 +533,9 @@ implicit val context = system.dispatcher
 implicit val clock = AkkaClock(system.scheduler)
 implicit val timeout = Timeout(2 seconds)
 
-retryAsync("Ask an actor over and over") { actor ? "Hello!" } pipeTo otherActor
+retryAsync("Ask an actor over and over") {
+   actor ? "Hello!"
+} pipeTo otherActor
 ```
 
 <a name="building-and-testing"></a>

@@ -28,6 +28,6 @@ import scala.util.Try
 case class LinearBackoff(initialBackoff: FiniteDuration = defaultBackoff) extends atmos.BackoffPolicy {
 
   /* Return the initial backoff multiplied by the number of failed attempts. */
-  override def nextBackoff(attempts: Int, outcome: Try[Any]) = initialBackoff * attempts
+  override def nextBackoff(attempts: Int, outcome: Try[Any]) = initialBackoff * attempts.toLong
 
 }
